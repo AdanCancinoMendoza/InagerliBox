@@ -1,0 +1,24 @@
+{
+  "name": "Inagerlibox - Xbox Hub",
+  "short_name": "Inagerlibox",
+  "description": "Inagerlibox: Juega en tu consola Xbox con cualquier control físico o virtual",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "landscape-primary",
+  "background_color": "#111111",
+  "theme_color": "#107c10",
+  "icons": [
+    {
+      "src": "/inagerlibox-icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/favicon.png",
+      "sizes": "64x64",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

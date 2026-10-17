@@ -1,0 +1,88 @@
+:root {
+  --font-main: 'Outfit', 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
+  
+  /* Paleta Elegante Inagerlibox con Fondo 100% Blanco Puro */
+  --bg-primary: #ffffff;
+  --bg-secondary: #ffffff;
+  --card-bg: #ffffff;
+  --card-bg-hover: #ffffff;
+  --card-border: #e4e4e7;
+  --card-border-active: #d6ad44;
+
+  /* Acentos Dorados Reales de Inagerlibox (Inspirados en el Logo del Ciervo Dorado) */
+  --accent-gold: #d6ad44;
+  --accent-gold-hover: #e5bd54;
+  --accent-gold-light: #fcf9ee;
+  --accent-gold-medium: #eedcb0;
+  --accent-gold-dark: #8c6819;
+  --accent-gold-border: #d6ad44;
+
+  --accent-black: #d6ad44;
+  --accent-black-hover: #e5bd54;
+  --accent-light: #fcf9ee;
+  --accent-medium: #eedcb0;
+  --accent-dark: #8c6819;
+  --accent-border: #cca238;
+
+  /* Mapeo universal para todos los componentes de la aplicación */
+  --pastel-green: #d6ad44;
+  --pastel-green-light: #fcf9ee;
+  --pastel-green-medium: #eedcb0;
+  --pastel-green-dark: #8c6819;
+  --pastel-green-border: #cca238;
+
+  /* Colores Planos Sólidos para Botones Xbox */
+  --btn-xbox-a: #107c10;
+  --btn-xbox-b: #d32f2f;
+  --btn-xbox-x: #1976d2;
+  --btn-xbox-y: #f9a825;
+  --btn-xbox-guide: #d6ad44;
+
+  /* Tipografía y Textos */
+  --text-primary: #111111;
+  --text-secondary: #525866;
+  --text-muted: #868c98;
+  --text-on-pastel: #ffffff;
+
+  /* Bordes y Esquinas */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 20px;
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  background-color: #ffffff;
+  color: var(--text-primary);
+  min-height: 100vh;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
+}
+
+/* Scrollbar Plano y Limpio */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: var(--bg-secondary);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--pastel-green-border);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--pastel-green);
+}
+
+button, input, select {
+  font-family: inherit;
+}
