@@ -13,7 +13,7 @@ const CONTROLLER_MODELS = [
 
 const RGB_MODES = [
   { id: 'chroma', label: 'Chroma Onda', icon: Sparkles, desc: 'Flujo multicolor continuo de 360° en movimiento' },
-  { id: 'reactive', label: 'Reactivo', icon: Zap, desc: 'Resplandor dinámico al pulsar botones o mover palancas' },
+  { id: 'reactive', label: 'Reactivo Letras', icon: Zap, desc: 'Ilumina según la letra pulsada: A (Verde), B (Rojo), X (Azul), Y (Amarillo)' },
   { id: 'player', label: 'Color Jugador', icon: Gamepad2, desc: 'Iluminación ambiental según el número de jugador' },
   { id: 'cyberpunk', label: 'Neón Cyber', icon: Flame, desc: 'Gradiente eléctrico Cian y Magenta en rotación' },
   { id: 'stealth', label: 'Sigilo', icon: Moon, desc: 'Iluminación minimalista / apagada' }
@@ -59,15 +59,33 @@ export default function XboxVisualizer({ state, rawGamepad, profile, playerIndex
   const rx = (axes.rightStickX || 0) * maxStickOffset;
   const ry = (axes.rightStickY || 0) * maxStickOffset;
 
-  // Evaluar actividad de controles físicos para el modo reactivo
-  const isAnyInputActive =
-    Object.values(buttons).some(Boolean) ||
-    Math.abs(axes.leftStickX || 0) > 0.08 ||
-    Math.abs(axes.leftStickY || 0) > 0.08 ||
-    Math.abs(axes.rightStickX || 0) > 0.08 ||
-    Math.abs(axes.rightStickY || 0) > 0.08 ||
-    ltValue > 0.05 ||
-    rtValue > 0.05;
+  // Configuración de los 4 botones de acción principales para iluminación reactiva por letras
+  const isPlayStation = activeType === 'ps4';
+
+  const actionButtons = isPlayStation
+    ? [
+        { key: 'A', letter: '✕', name: 'Cruz (✕)', color: '#2563eb', pressed: !!buttons.A },
+        { key: 'B', letter: '○', name: 'Círculo (○)', color: '#ef4444', pressed: !!buttons.B },
+        { key: 'X', letter: '□', name: 'Cuadrado (□)', color: '#db2777', pressed: !!buttons.X },
+        { key: 'Y', letter: '△', name: 'Triángulo (△)', color: '#10b981', pressed: !!buttons.Y },
+      ]
+    : [
+        { key: 'A', letter: 'A', name: 'Botón A', color: '#22c55e', pressed: !!buttons.A },
+        { key: 'B', letter: 'B', name: 'Botón B', color: '#ef4444', pressed: !!buttons.B },
+        { key: 'X', letter: 'X', name: 'Botón X', color: '#0ea5e9', pressed: !!buttons.X },
+        { key: 'Y', letter: 'Y', name: 'Botón Y', color: '#eab308', pressed: !!buttons.Y },
+      ];
+
+  const pressedActionButtons = actionButtons.filter(b => b.pressed);
+
+  // Otros controles para el modo reactivo
+  const isOtherInputActive =
+    buttons.LB || buttons.RB || buttons.LS || buttons.RS ||
+    buttons.DpadUp || buttons.DpadDown || buttons.DpadLeft || buttons.DpadRight ||
+    buttons.View || buttons.Menu || buttons.Xbox ||
+    ltValue > 0.05 || rtValue > 0.05 ||
+    Math.abs(axes.leftStickX || 0) > 0.08 || Math.abs(axes.leftStickY || 0) > 0.08 ||
+    Math.abs(axes.rightStickX || 0) > 0.08 || Math.abs(axes.rightStickY || 0) > 0.08;
 
   const playerColors = ['#107c10', '#0078d7', '#d83b01', '#d48806'];
   const pColor = playerColors[playerIndex] || '#107c10';
@@ -76,15 +94,51 @@ export default function XboxVisualizer({ state, rawGamepad, profile, playerIndex
   let rgbStroke = 'url(#rgbChromaGrad)';
   let rgbGlowOpacity = 0.9;
   let rgbAuraIntensity = 'glow-chroma';
+  let dynamicContainerStyle = {};
 
   if (rgbMode === 'chroma') {
     rgbStroke = 'url(#rgbChromaGrad)';
     rgbGlowOpacity = 0.9;
     rgbAuraIntensity = 'glow-chroma';
   } else if (rgbMode === 'reactive') {
-    rgbStroke = isAnyInputActive ? 'url(#rgbChromaGrad)' : 'rgba(180, 190, 205, 0.2)';
-    rgbGlowOpacity = isAnyInputActive ? 1.0 : 0.15;
-    rgbAuraIntensity = isAnyInputActive ? 'glow-reactive-active' : 'glow-dim';
+    if (pressedActionButtons.length === 1) {
+      // 1 sola letra pulsada: resplandor sólido de alta intensidad según el color de la letra
+      const btn = pressedActionButtons[0];
+      rgbStroke = btn.color;
+      rgbGlowOpacity = 1.0;
+      rgbAuraIntensity = 'glow-reactive-letter';
+      dynamicContainerStyle = {
+        borderColor: btn.color,
+        boxShadow: `0 4px 28px ${btn.color}44`,
+        transition: 'all 0.08s ease-out'
+      };
+    } else if (pressedActionButtons.length > 1) {
+      // Múltiples letras pulsadas simultáneamente: gradiente reactivo dinámico
+      rgbStroke = 'url(#rgbReactiveLettersGrad)';
+      rgbGlowOpacity = 1.0;
+      rgbAuraIntensity = 'glow-reactive-letter';
+      const mainColor = pressedActionButtons[0].color;
+      dynamicContainerStyle = {
+        borderColor: mainColor,
+        boxShadow: `0 4px 30px ${mainColor}55`,
+        transition: 'all 0.08s ease-out'
+      };
+    } else if (isOtherInputActive) {
+      // Gatillos, bumpers, palancas o cruceta activos (sin letras)
+      rgbStroke = '#06b6d4';
+      rgbGlowOpacity = 0.85;
+      rgbAuraIntensity = 'glow-reactive-active';
+      dynamicContainerStyle = {
+        borderColor: '#06b6d4',
+        boxShadow: '0 4px 22px rgba(6, 182, 212, 0.25)',
+        transition: 'all 0.12s ease-out'
+      };
+    } else {
+      // Reposo (esperando pulsación)
+      rgbStroke = 'rgba(215, 220, 230, 0.35)';
+      rgbGlowOpacity = 0.18;
+      rgbAuraIntensity = 'glow-dim';
+    }
   } else if (rgbMode === 'player') {
     rgbStroke = pColor;
     rgbGlowOpacity = 0.85;
@@ -108,14 +162,13 @@ export default function XboxVisualizer({ state, rawGamepad, profile, playerIndex
   };
 
   // Etiquetas adaptables según el modelo de mando
-  const isPlayStation = activeType === 'ps4';
   const ltLabel = isPlayStation ? 'L2' : 'LT';
   const rtLabel = isPlayStation ? 'R2' : 'RT';
   const ltDesc = isPlayStation ? 'Gatillo Izquierdo (L2)' : 'Gatillo Izquierdo (LT)';
   const rtDesc = isPlayStation ? 'Gatillo Derecho (R2)' : 'Gatillo Derecho (RT)';
 
   return (
-    <div className={`visualizer-container ${rgbAuraIntensity}`}>
+    <div className={`visualizer-container ${rgbAuraIntensity}`} style={dynamicContainerStyle}>
       {/* Indicador de Jugador y Estado de Asignación */}
       <div className="visualizer-player-header">
         <span className="vis-player-pill" style={{ backgroundColor: pColor, color: '#ffffff' }}>
@@ -151,6 +204,35 @@ export default function XboxVisualizer({ state, rawGamepad, profile, playerIndex
             );
           })}
         </div>
+
+        {/* Estado interactivo en vivo de letras en modo Reactivo */}
+        {rgbMode === 'reactive' && (
+          <div className="rgb-reactive-letters-status">
+            <span className="reactive-hint-label">Letras:</span>
+            <div className="reactive-chips-row">
+              {actionButtons.map((btn) => (
+                <span
+                  key={btn.key}
+                  className={`reactive-letter-chip ${btn.pressed ? 'pressed' : ''}`}
+                  style={{
+                    borderColor: btn.pressed ? btn.color : '#cbd0d8',
+                    backgroundColor: btn.pressed ? btn.color : '#ffffff',
+                    color: btn.pressed ? '#ffffff' : btn.color,
+                    boxShadow: btn.pressed ? `0 0 10px ${btn.color}90` : 'none',
+                  }}
+                  title={`${btn.name} (${btn.pressed ? 'Presionado' : 'En reposo'})`}
+                >
+                  {btn.letter}
+                </span>
+              ))}
+            </div>
+            {pressedActionButtons.length > 0 && (
+              <span className="reactive-active-feedback">
+                {pressedActionButtons.map(b => b.letter).join(' + ')} activo
+              </span>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Barra de Selección y Detección de Silueta de Mando */}
@@ -267,6 +349,21 @@ export default function XboxVisualizer({ state, rawGamepad, profile, playerIndex
                 <feMergeNode in="SourceGraphic" />
               </feMerge>
             </filter>
+
+            {/* Gradiente Reactivo Dinámico para Combinaciones de Letras Pulsadas */}
+            <linearGradient id="rgbReactiveLettersGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+              {pressedActionButtons.length >= 2 ? (
+                pressedActionButtons.map((btn, idx) => {
+                  const offset = Math.round((idx / (pressedActionButtons.length - 1)) * 100);
+                  return <stop key={btn.key} offset={`${offset}%`} stopColor={btn.color} />;
+                })
+              ) : (
+                <>
+                  <stop offset="0%" stopColor="#22c55e" />
+                  <stop offset="100%" stopColor="#ef4444" />
+                </>
+              )}
+            </linearGradient>
 
             {/* Gradiente Chroma Arcoíris Animado Continuo con Rotación 360 */}
             <linearGradient id="rgbChromaGrad" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -514,19 +611,43 @@ function renderXboxOneSvg(buttons, ltValue, rtValue, lx, ly, rx, ry, rgbStroke =
       {/* Botones frontales A, B, X, Y */}
       <g transform="translate(435, 160)">
         <g transform="translate(0, -32)">
-          <circle r="15" fill={buttons.Y ? '#c68400' : '#f9a825'} stroke="#d48806" strokeWidth="2" />
+          <circle
+            r="15"
+            fill={buttons.Y ? '#eab308' : '#f9a825'}
+            stroke={buttons.Y ? '#fef08a' : '#d48806'}
+            strokeWidth={buttons.Y ? "3" : "2"}
+            filter={buttons.Y ? 'url(#rgbGlowFilter)' : 'none'}
+          />
           <text x="0" y="5" textAnchor="middle" fill="#ffffff" fontSize="14" fontWeight="900">Y</text>
         </g>
         <g transform="translate(-32, 0)">
-          <circle r="15" fill={buttons.X ? '#0d47a1' : '#1976d2'} stroke="#1565c0" strokeWidth="2" />
+          <circle
+            r="15"
+            fill={buttons.X ? '#0ea5e9' : '#1976d2'}
+            stroke={buttons.X ? '#bae6fd' : '#1565c0'}
+            strokeWidth={buttons.X ? "3" : "2"}
+            filter={buttons.X ? 'url(#rgbGlowFilter)' : 'none'}
+          />
           <text x="0" y="5" textAnchor="middle" fill="#ffffff" fontSize="14" fontWeight="900">X</text>
         </g>
         <g transform="translate(32, 0)">
-          <circle r="15" fill={buttons.B ? '#b71c1c' : '#d32f2f'} stroke="#c62828" strokeWidth="2" />
+          <circle
+            r="15"
+            fill={buttons.B ? '#ef4444' : '#d32f2f'}
+            stroke={buttons.B ? '#fecaca' : '#c62828'}
+            strokeWidth={buttons.B ? "3" : "2"}
+            filter={buttons.B ? 'url(#rgbGlowFilter)' : 'none'}
+          />
           <text x="0" y="5" textAnchor="middle" fill="#ffffff" fontSize="14" fontWeight="900">B</text>
         </g>
         <g transform="translate(0, 32)">
-          <circle r="15" fill={buttons.A ? '#1b5e20' : '#2e7d32'} stroke="#1b5e20" strokeWidth="2" />
+          <circle
+            r="15"
+            fill={buttons.A ? '#22c55e' : '#2e7d32'}
+            stroke={buttons.A ? '#bbf7d0' : '#1b5e20'}
+            strokeWidth={buttons.A ? "3" : "2"}
+            filter={buttons.A ? 'url(#rgbGlowFilter)' : 'none'}
+          />
           <text x="0" y="5" textAnchor="middle" fill="#ffffff" fontSize="14" fontWeight="900">A</text>
         </g>
       </g>
@@ -692,22 +813,46 @@ function renderPlayStationSvg(buttons, ltValue, rtValue, lx, ly, rx, ry, pColor,
         <circle r="36" fill="#f6f7f8" stroke="#e2e4e7" strokeWidth="2" />
         {/* Triángulo / Y (Arriba) */}
         <g transform="translate(0, -28)">
-          <circle r="13" fill={buttons.Y ? '#111111' : '#ffffff'} stroke="#cbd0d8" strokeWidth="2" />
+          <circle
+            r="13"
+            fill={buttons.Y ? '#10b981' : '#ffffff'}
+            stroke={buttons.Y ? '#a7f3d0' : '#cbd0d8'}
+            strokeWidth={buttons.Y ? "2.5" : "2"}
+            filter={buttons.Y ? 'url(#rgbGlowFilter)' : 'none'}
+          />
           <text x="0" y="4" textAnchor="middle" fill={buttons.Y ? '#ffffff' : '#00aa55'} fontSize="13" fontWeight="900">△</text>
         </g>
         {/* Círculo / B (Derecha) */}
         <g transform="translate(28, 0)">
-          <circle r="13" fill={buttons.B ? '#111111' : '#ffffff'} stroke="#cbd0d8" strokeWidth="2" />
+          <circle
+            r="13"
+            fill={buttons.B ? '#ef4444' : '#ffffff'}
+            stroke={buttons.B ? '#fecaca' : '#cbd0d8'}
+            strokeWidth={buttons.B ? "2.5" : "2"}
+            filter={buttons.B ? 'url(#rgbGlowFilter)' : 'none'}
+          />
           <text x="0" y="4" textAnchor="middle" fill={buttons.B ? '#ffffff' : '#e60012'} fontSize="13" fontWeight="900">○</text>
         </g>
         {/* Cruz / A (Abajo) */}
         <g transform="translate(0, 28)">
-          <circle r="13" fill={buttons.A ? '#111111' : '#ffffff'} stroke="#cbd0d8" strokeWidth="2" />
+          <circle
+            r="13"
+            fill={buttons.A ? '#2563eb' : '#ffffff'}
+            stroke={buttons.A ? '#bfdbfe' : '#cbd0d8'}
+            strokeWidth={buttons.A ? "2.5" : "2"}
+            filter={buttons.A ? 'url(#rgbGlowFilter)' : 'none'}
+          />
           <text x="0" y="4" textAnchor="middle" fill={buttons.A ? '#ffffff' : '#0066cc'} fontSize="13" fontWeight="900">✕</text>
         </g>
         {/* Cuadrado / X (Izquierda) */}
         <g transform="translate(-28, 0)">
-          <circle r="13" fill={buttons.X ? '#111111' : '#ffffff'} stroke="#cbd0d8" strokeWidth="2" />
+          <circle
+            r="13"
+            fill={buttons.X ? '#db2777' : '#ffffff'}
+            stroke={buttons.X ? '#fbcfe8' : '#cbd0d8'}
+            strokeWidth={buttons.X ? "2.5" : "2"}
+            filter={buttons.X ? 'url(#rgbGlowFilter)' : 'none'}
+          />
           <text x="0" y="4" textAnchor="middle" fill={buttons.X ? '#ffffff' : '#cc0088'} fontSize="13" fontWeight="900">□</text>
         </g>
       </g>
@@ -865,19 +1010,43 @@ function renderXbox360Svg(buttons, ltValue, rtValue, lx, ly, rx, ry, playerIndex
       {/* Botones frontales A, B, X, Y (360) */}
       <g transform="translate(435, 160)">
         <g transform="translate(0, -32)">
-          <circle r="15" fill={buttons.Y ? '#c68400' : '#f9a825'} stroke="#d48806" strokeWidth="2" />
+          <circle
+            r="15"
+            fill={buttons.Y ? '#eab308' : '#f9a825'}
+            stroke={buttons.Y ? '#fef08a' : '#d48806'}
+            strokeWidth={buttons.Y ? "3" : "2"}
+            filter={buttons.Y ? 'url(#rgbGlowFilter)' : 'none'}
+          />
           <text x="0" y="5" textAnchor="middle" fill="#ffffff" fontSize="14" fontWeight="900">Y</text>
         </g>
         <g transform="translate(-32, 0)">
-          <circle r="15" fill={buttons.X ? '#0d47a1' : '#1976d2'} stroke="#1565c0" strokeWidth="2" />
+          <circle
+            r="15"
+            fill={buttons.X ? '#0ea5e9' : '#1976d2'}
+            stroke={buttons.X ? '#bae6fd' : '#1565c0'}
+            strokeWidth={buttons.X ? "3" : "2"}
+            filter={buttons.X ? 'url(#rgbGlowFilter)' : 'none'}
+          />
           <text x="0" y="5" textAnchor="middle" fill="#ffffff" fontSize="14" fontWeight="900">X</text>
         </g>
         <g transform="translate(32, 0)">
-          <circle r="15" fill={buttons.B ? '#b71c1c' : '#d32f2f'} stroke="#c62828" strokeWidth="2" />
+          <circle
+            r="15"
+            fill={buttons.B ? '#ef4444' : '#d32f2f'}
+            stroke={buttons.B ? '#fecaca' : '#c62828'}
+            strokeWidth={buttons.B ? "3" : "2"}
+            filter={buttons.B ? 'url(#rgbGlowFilter)' : 'none'}
+          />
           <text x="0" y="5" textAnchor="middle" fill="#ffffff" fontSize="14" fontWeight="900">B</text>
         </g>
         <g transform="translate(0, 32)">
-          <circle r="15" fill={buttons.A ? '#1b5e20' : '#2e7d32'} stroke="#1b5e20" strokeWidth="2" />
+          <circle
+            r="15"
+            fill={buttons.A ? '#22c55e' : '#2e7d32'}
+            stroke={buttons.A ? '#bbf7d0' : '#1b5e20'}
+            strokeWidth={buttons.A ? "3" : "2"}
+            filter={buttons.A ? 'url(#rgbGlowFilter)' : 'none'}
+          />
           <text x="0" y="5" textAnchor="middle" fill="#ffffff" fontSize="14" fontWeight="900">A</text>
         </g>
       </g>
@@ -994,19 +1163,43 @@ function renderXboxClassicSvg(buttons, ltValue, rtValue, lx, ly, rx, ry, rgbStro
       {/* Botones frontales A, B, X, Y */}
       <g transform="translate(425, 160)">
         <g transform="translate(0, -30)">
-          <circle r="14" fill={buttons.Y ? '#c68400' : '#f9a825'} stroke="#d48806" strokeWidth="2" />
+          <circle
+            r="14"
+            fill={buttons.Y ? '#eab308' : '#f9a825'}
+            stroke={buttons.Y ? '#fef08a' : '#d48806'}
+            strokeWidth={buttons.Y ? "3" : "2"}
+            filter={buttons.Y ? 'url(#rgbGlowFilter)' : 'none'}
+          />
           <text x="0" y="5" textAnchor="middle" fill="#ffffff" fontSize="13" fontWeight="900">Y</text>
         </g>
         <g transform="translate(-30, 0)">
-          <circle r="14" fill={buttons.X ? '#0d47a1' : '#1976d2'} stroke="#1565c0" strokeWidth="2" />
+          <circle
+            r="14"
+            fill={buttons.X ? '#0ea5e9' : '#1976d2'}
+            stroke={buttons.X ? '#bae6fd' : '#1565c0'}
+            strokeWidth={buttons.X ? "3" : "2"}
+            filter={buttons.X ? 'url(#rgbGlowFilter)' : 'none'}
+          />
           <text x="0" y="5" textAnchor="middle" fill="#ffffff" fontSize="13" fontWeight="900">X</text>
         </g>
         <g transform="translate(30, 0)">
-          <circle r="14" fill={buttons.B ? '#b71c1c' : '#d32f2f'} stroke="#c62828" strokeWidth="2" />
+          <circle
+            r="14"
+            fill={buttons.B ? '#ef4444' : '#d32f2f'}
+            stroke={buttons.B ? '#fecaca' : '#c62828'}
+            strokeWidth={buttons.B ? "3" : "2"}
+            filter={buttons.B ? 'url(#rgbGlowFilter)' : 'none'}
+          />
           <text x="0" y="5" textAnchor="middle" fill="#ffffff" fontSize="13" fontWeight="900">B</text>
         </g>
         <g transform="translate(0, 30)">
-          <circle r="14" fill={buttons.A ? '#1b5e20' : '#2e7d32'} stroke="#1b5e20" strokeWidth="2" />
+          <circle
+            r="15"
+            fill={buttons.A ? '#22c55e' : '#2e7d32'}
+            stroke={buttons.A ? '#bbf7d0' : '#1b5e20'}
+            strokeWidth={buttons.A ? "3" : "2"}
+            filter={buttons.A ? 'url(#rgbGlowFilter)' : 'none'}
+          />
           <text x="0" y="5" textAnchor="middle" fill="#ffffff" fontSize="13" fontWeight="900">A</text>
         </g>
       </g>
@@ -1120,19 +1313,43 @@ function renderGenericSvg(buttons, ltValue, rtValue, lx, ly, rx, ry, rgbStroke =
       <g transform="translate(440, 180)">
         <circle r="36" fill="#f6f7f8" stroke="#e2e4e7" strokeWidth="2" />
         <g transform="translate(0, -26)">
-          <circle r="12" fill={buttons.Y ? '#111111' : '#ffffff'} stroke="#cbd0d8" strokeWidth="1.5" />
+          <circle
+            r="12"
+            fill={buttons.Y ? '#eab308' : '#ffffff'}
+            stroke={buttons.Y ? '#fef08a' : '#cbd0d8'}
+            strokeWidth={buttons.Y ? "2" : "1.5"}
+            filter={buttons.Y ? 'url(#rgbGlowFilter)' : 'none'}
+          />
           <text x="0" y="4" textAnchor="middle" fill={buttons.Y ? '#ffffff' : '#111111'} fontSize="9" fontWeight="bold">4 (Y)</text>
         </g>
         <g transform="translate(26, 0)">
-          <circle r="12" fill={buttons.B ? '#111111' : '#ffffff'} stroke="#cbd0d8" strokeWidth="1.5" />
+          <circle
+            r="12"
+            fill={buttons.B ? '#ef4444' : '#ffffff'}
+            stroke={buttons.B ? '#fecaca' : '#cbd0d8'}
+            strokeWidth={buttons.B ? "2" : "1.5"}
+            filter={buttons.B ? 'url(#rgbGlowFilter)' : 'none'}
+          />
           <text x="0" y="4" textAnchor="middle" fill={buttons.B ? '#ffffff' : '#111111'} fontSize="9" fontWeight="bold">3 (B)</text>
         </g>
         <g transform="translate(0, 26)">
-          <circle r="12" fill={buttons.A ? '#111111' : '#ffffff'} stroke="#cbd0d8" strokeWidth="1.5" />
+          <circle
+            r="12"
+            fill={buttons.A ? '#22c55e' : '#ffffff'}
+            stroke={buttons.A ? '#bbf7d0' : '#cbd0d8'}
+            strokeWidth={buttons.A ? "2" : "1.5"}
+            filter={buttons.A ? 'url(#rgbGlowFilter)' : 'none'}
+          />
           <text x="0" y="4" textAnchor="middle" fill={buttons.A ? '#ffffff' : '#111111'} fontSize="9" fontWeight="bold">2 (A)</text>
         </g>
         <g transform="translate(-26, 0)">
-          <circle r="12" fill={buttons.X ? '#111111' : '#ffffff'} stroke="#cbd0d8" strokeWidth="1.5" />
+          <circle
+            r="12"
+            fill={buttons.X ? '#0ea5e9' : '#ffffff'}
+            stroke={buttons.X ? '#bae6fd' : '#cbd0d8'}
+            strokeWidth={buttons.X ? "2" : "1.5"}
+            filter={buttons.X ? 'url(#rgbGlowFilter)' : 'none'}
+          />
           <text x="0" y="4" textAnchor="middle" fill={buttons.X ? '#ffffff' : '#111111'} fontSize="9" fontWeight="bold">1 (X)</text>
         </g>
       </g>
